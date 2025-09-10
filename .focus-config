@@ -1,0 +1,22 @@
+[16]  # Version number. Do not delete.
+
+[[workspace]]
+/home/redith/Documents/go-online
+
+[ignore]
+.git
+.vscode
+.focus-config.bak
+global.focus-config
+[[settings]]
+tab_size:                                           2
+[[build commands]]
+build_working_dir:      /home/redith/Documents/go-online
+open_panel_on_build:    true
+clear_build_output_before_running: true
+error_regex:            ^(?P<file>.*):(?P<line>\d+):(?P<col>\d+): (?P<type>error|warning): (?P<msg>.*) (\[(?P<msg1>.*)\])?$  # see examples below
+auto_jump_to_error:     false
+
+[Debug Build]
+build_command:          go build -o goonline
+key_binding:            F5
