@@ -6,6 +6,7 @@ import (
 	. "go-online/globals"
 	. "go-online/handlers"
 	. "go-online/utils"
+	. "go-online/engine"
 	"golang.org/x/net/websocket"
 	"net/http"
 	"os"
@@ -34,8 +35,7 @@ func cmd() {
 func main() {
 
 	// Game engine
-
-	Println("asdf")
+	Play()
 	return
 
 	// Web server
