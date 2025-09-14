@@ -6,7 +6,8 @@ import (
 	. "go-online/globals"
 	. "go-online/handlers"
 	. "go-online/utils"
-	. "go-online/engine"
+	// . "go-online/engine"
+	"go-online/ui"
 	"golang.org/x/net/websocket"
 	"net/http"
 	"os"
@@ -35,7 +36,8 @@ func cmd() {
 func main() {
 
 	// Game engine
-	Play()
+	ui.Draw()
+	// Play()
 	return
 
 	// Web server

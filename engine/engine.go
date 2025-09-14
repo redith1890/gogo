@@ -1,11 +1,10 @@
 package engine
 
-
-import(
+import (
 	. "fmt"
 	"math/rand"
+	// "go-online/ui"
 )
-
 
 const (
 	Black = iota
@@ -16,7 +15,7 @@ const (
 
 type Piece struct {
 	color int
-	ko bool
+	ko    bool
 }
 
 type Point struct {
@@ -24,12 +23,11 @@ type Point struct {
 	Y int
 }
 
-
 type PointNode struct {
 	point Point
-	Up *PointNode
-	Down *PointNode
-	Left *PointNode
+	Up    *PointNode
+	Down  *PointNode
+	Left  *PointNode
 	Right *PointNode
 }
 
@@ -42,17 +40,17 @@ type Group struct {
 // }
 
 type Game struct {
-	grid [][]int
-	turn int
-	eaten [2]uint
-	score [2]uint
+	Grid  [][]int
+	Turn  int
+	Eaten [2]uint
+	Score [2]uint
 }
 
 func (p Point) Up() Point {
-	if (p.Y == 0) {
+	if p.Y == 0 {
 		return p
 	}
-	return Point{p.X, p.Y-1}
+	return Point{p.X, p.Y - 1}
 }
 
 func (p Point) Down() Point {
@@ -73,33 +71,32 @@ func (p Point) Right() Point {
 func NewGame(size int, start_turn int) Game {
 
 	new_grid := make([][]int, size)
-	for i := range new_grid {
-		new_grid[i] = make([]int, size)
-		for j := range new_grid[i] {
-			new_grid[i][j] = Empty
+	for x := range new_grid {
+		new_grid[x] = make([]int, size)
+		for y := range new_grid[x] {
+			new_grid[x][y] = Empty
 		}
 	}
 
-	if(start_turn == Random) {
+	if start_turn == Random {
 		n := rand.Intn(2)
-		if(n == 0) {
+		if n == 0 {
 			start_turn = White
 		} else {
 			start_turn = Black
 		}
 	}
 
-	game := Game {
-		grid: new_grid,
-		turn: start_turn,
-		score: [2]uint{0, 0},
+	game := Game{Grid: new_grid,
+		Turn:  start_turn,
+		Score: [2]uint{0, 0},
 	}
 	return game
 
 }
 
 func opposite(color_turn int) int {
-	if(color_turn == White) {
+	if color_turn == White {
 		return Black
 	} else {
 		return White
@@ -108,76 +105,112 @@ func opposite(color_turn int) int {
 
 func (game *Game) Move(pos Point) bool {
 	Print(pos)
-	Println(game.turn)
+	Println("engine move: ", game.Turn)
 
-	if(!game.is_move_legal(pos)) {
+	if !game.is_move_legal(pos) {
 		Println("El movimiento %v no es legal", pos)
 		return false
 	}
 
-	game.grid[pos.Y][pos.X] = game.turn
-	game.turn = opposite(game.turn)
+	game.Grid[pos.X][pos.Y] = game.Turn
+	game.Turn = opposite(game.Turn)
+
+	return true
+}
+
+func eat(pos Point) {
+	Println(TODO)
+}
+
+func (game *Game) is_move_legal(pos Point) bool {
+	if game.Grid[pos.X][pos.Y] != Empty {
+		Println(game.Grid[pos.X][pos.Y])
+		return false
+	}
+
+	is_suicide := game.is_suicide(pos)
+	is_eating := game.is_eating(pos)
+
+	if is_suicide {
+		if is_eating {
+			Println("COME !TODO")
+		} else {
+			return false
+		}
+	}
+
 
 
 	return true
+}
+
+func (game *Game) is_eating(pos Point) bool {
+	_, liberties := game.SelectGroup(Point{pos.X - 1, pos.Y})
+	if len(liberties) == 1 {
+		return true
+	}
+	_, liberties = game.SelectGroup(Point{pos.X + 1, pos.Y})
+	if len(liberties) == 1 {
+		return true
+	}
+	_, liberties = game.SelectGroup(Point{pos.X, pos.Y - 1})
+	if len(liberties) == 1 {
+		return true
+	}
+	_, liberties = game.SelectGroup(Point{pos.X, pos.Y + 1})
+	if len(liberties) == 1 {
+		return true
+	}
+	return false
 }
 
 func (game *Game) is_suicide(pos Point) bool {
 	up, down, left, right := false, false, false, false
 
-	size := len(game.grid)
+	size := len(game.Grid)
 
-	up    = pos.Y == 0      || game.grid[pos.Y][pos.X-1] == opposite(game.turn)
-	down  = pos.Y == size-1 || game.grid[pos.Y][pos.X+1] == opposite(game.turn)
-	left  = pos.X == 0      || game.grid[pos.Y-1][pos.X] == opposite(game.turn)
-	right = pos.X == size-1 || game.grid[pos.Y+1][pos.X] == opposite(game.turn)
+	up = pos.Y == 0 || game.Grid[pos.X][pos.Y-1] == opposite(game.Turn)
+	down = pos.Y == size-1 || game.Grid[pos.X][pos.Y+1] == opposite(game.Turn)
+	left = pos.X == 0 || game.Grid[pos.X-1][pos.Y] == opposite(game.Turn)
+	right = pos.X == size-1 || game.Grid[pos.X+1][pos.Y] == opposite(game.Turn)
 
+	if up && down && left && right {
+		// _, liberties := game.SelectGroup(Point{pos.X - 1, pos.Y})
+		// if len(liberties) == 1 {
+		// 	return false
+		// }
+		// _, liberties = game.SelectGroup(Point{pos.X + 1, pos.Y})
+		// if len(liberties) == 1 {
+		// 	return false
+		// }
+		// _, liberties = game.SelectGroup(Point{pos.X, pos.Y - 1})
+		// if len(liberties) == 1 {
+		// 	return false
+		// }
+		// _, liberties = game.SelectGroup(Point{pos.X, pos.Y + 1})
+		// if len(liberties) == 1 {
+		// 	return false
+		// }
 
-
-	if(up && down && left && right) {
-		_, liberties := game.SelectGroup(Point{pos.Y, pos.X-1})
-		if(len(liberties) == 1) {
-			return false
-		}
-		_, liberties = game.SelectGroup(Point{pos.Y, pos.X+1})
-		if(len(liberties) == 1) {
-			return false
-		}
-		_, liberties = game.SelectGroup(Point{pos.Y-1, pos.X})
-		if(len(liberties) == 1) {
-			return false
-		}
-		_, liberties = game.SelectGroup(Point{pos.Y+1, pos.X})
-		if(len(liberties) == 1) {
-			return false
-		}
-
-		return true;
+		return true
 	}
-	return false;
-}
-
-func (game *Game) is_move_legal(pos Point) bool {
-	if(game.grid[pos.Y][pos.X] != Empty) {
-		Println(game.grid[pos.Y][pos.X])
-		return false
-	}
-
-	if(game.is_suicide(pos)) {
-		Println("es suicidio")
-		return false
-	}
-
-	return true
+	return false
 }
 
 func (game *Game) MoveWithoutRules(pos Point, color int) bool {
-	game.grid[pos.Y][pos.X] = color
+	game.Grid[pos.X][pos.Y] = color
 	return true
 }
 
+func IsOutOfRange(pos Point, size int) bool {
+	if pos.X < 0 || pos.Y < 0 || pos.X >= size || pos.Y >= size {
+		return true
+	}
+	return false
+}
+
 func (game *Game) SelectGroup(pos Point) ([]Point, []Point) {
-	if game.grid[pos.X][pos.Y] == Empty {
+	if IsOutOfRange(pos, len(game.Grid)) || game.Grid[pos.X][pos.Y] == Empty {
 		return nil, nil
 	}
 
@@ -185,24 +218,23 @@ func (game *Game) SelectGroup(pos Point) ([]Point, []Point) {
 	var liberties []Point
 	var visited = make(map[Point]bool)
 
-
 	var traverse func(Point)
 	traverse = func(p Point) {
 		if visited[p] {
 			return
 		}
-		if p.X < 0 || p.X >= len(game.grid) || p.Y < 0 || p.Y >= len(game.grid) {
+		if p.X < 0 || p.X >= len(game.Grid) || p.Y < 0 || p.Y >= len(game.Grid) {
 			return
 		}
 
 		visited[p] = true
 
-		if game.grid[p.Y][p.X] == Empty {
+		if game.Grid[p.X][p.Y] == Empty {
 			liberties = append(liberties, p)
 			return
 		}
 
-		if game.grid[p.Y][p.X] == game.grid[pos.Y][pos.X] {
+		if game.Grid[p.X][p.Y] == game.Grid[pos.X][pos.Y] {
 			points = append(points, p)
 			traverse(Point{p.X, p.Y - 1})
 			traverse(Point{p.X, p.Y + 1})
@@ -212,7 +244,6 @@ func (game *Game) SelectGroup(pos Point) ([]Point, []Point) {
 		return
 	}
 	traverse(pos)
-
 
 	return points, liberties
 }
@@ -225,17 +256,17 @@ func Play() {
 	// game.Move(Point{1,0})
 	// game.Move(Point{0,0})
 
-	game.MoveWithoutRules(Point{0,0}, Black)
-	game.MoveWithoutRules(Point{1,1}, White)
-	game.MoveWithoutRules(Point{0,1}, White)
-	game.MoveWithoutRules(Point{1,0}, White)
-	game.MoveWithoutRules(Point{3,0}, White)
+	game.MoveWithoutRules(Point{0, 0}, Black)
+	game.MoveWithoutRules(Point{1, 1}, White)
+	game.MoveWithoutRules(Point{0, 1}, White)
+	game.MoveWithoutRules(Point{1, 0}, White)
+	game.MoveWithoutRules(Point{3, 0}, White)
 
-	group, liberties := game.SelectGroup(Point{1,1})
+	group, liberties := game.SelectGroup(Point{1, 1})
 	Println(group, liberties)
 
-
-	for _, row := range game.grid {
+	for _, row := range game.Grid {
 		Println("%v", row)
 	}
+
 }
