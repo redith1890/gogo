@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	// "go-online/ui"
 )
-
+type Color uint8
 const (
 	Black = iota
 	White
@@ -27,8 +27,16 @@ type Group struct {
 	pos []Point
 }
 
+type Move struct {
+	// This gonna be used to generate the sgf, with letters/bytes instead of numbers
+	X uint8
+	Y uint8
+	Color uint8
+}
+
 type Game struct {
 	Grid  [][]int
+	Moves []Move
 	Turn  int
 	Eaten [2]uint
 	Score [2]uint
@@ -91,8 +99,14 @@ func opposite(color_turn int) int {
 	}
 }
 
+func (game *Game) add_move(pos Point) int {
+	move := Move{X: uint8(pos.X), Y: uint8(pos.Y), Color: uint8(game.Turn)}
+	game.Moves = append(game.Moves, move)
+	return len(game.Moves)
+}
+
 func (game *Game) Move(pos Point) bool {
-	Print(pos)
+	Println(game.Moves)
 	Println("engine move: ", game.Turn)
 
 	if !game.is_move_legal(pos) {
@@ -101,6 +115,7 @@ func (game *Game) Move(pos Point) bool {
 	}
 
 	game.Grid[pos.X][pos.Y] = game.Turn
+	game.add_move(pos)
 	game.Turn = opposite(game.Turn)
 
 	return true
@@ -125,6 +140,23 @@ func (game *Game) is_move_legal(pos Point) bool {
 	}
 
 	return true
+}
+
+func (game *Game) undo_last_move() {
+
+	game.Moves = game.Moves[:len(game.Moves)-1]
+	old_game := *game
+	first_turn := game.Moves[0].Color
+	game.Moves = []Move{}
+	game.Grid = [][]int{}
+	game.Score = [2]uint{}
+	// game.Eaten = [2]uint{}
+	game.Turn = int(first_turn)
+
+
+
+
+
 }
 
 func (game *Game) eat(pos Point) bool {
@@ -227,6 +259,7 @@ func (game *Game) is_suicide(pos Point) bool {
 
 		return true
 	}
+
 
 	if !up {
 		_, liberties, _ := game.SelectGroup(Point{pos.X, pos.Y-1})
