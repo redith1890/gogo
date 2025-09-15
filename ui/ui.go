@@ -79,7 +79,7 @@ func Draw() {
 			if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
 				pos, exists := get_grid_point(game, mouse_position)
 				if(exists) {
-					points, liberties := game.SelectGroup(pos)
+					points, liberties, _ := game.SelectGroup(pos)
 					for _, point := range points {
 						Println(get_grid_middle_pos(point))
 						rl.DrawCircleLinesV(get_grid_middle_pos(point), 1, rl.Yellow)
@@ -98,6 +98,10 @@ func Draw() {
 					}
 				}
 			}
+			white_score := Sprintf("W %d", game.Score[White])
+			black_score := Sprintf("B %d", game.Score[Black])
+			rl.DrawText(white_score, 20, 5, 22, rl.Blue)
+			rl.DrawText(black_score, 100, 5, 22, rl.Blue)
 
 			// Quizas cambiar esto a rectangles
 			for i := 0; i < board_size; i++ {

@@ -23,21 +23,9 @@ type Point struct {
 	Y int
 }
 
-type PointNode struct {
-	point Point
-	Up    *PointNode
-	Down  *PointNode
-	Left  *PointNode
-	Right *PointNode
-}
-
 type Group struct {
 	pos []Point
 }
-
-// type Board struct {
-
-// }
 
 type Game struct {
 	Grid  [][]int
@@ -118,10 +106,6 @@ func (game *Game) Move(pos Point) bool {
 	return true
 }
 
-func eat(pos Point) {
-	Println(TODO)
-}
-
 func (game *Game) is_move_legal(pos Point) bool {
 	if game.Grid[pos.X][pos.Y] != Empty {
 		Println(game.Grid[pos.X][pos.Y])
@@ -130,6 +114,7 @@ func (game *Game) is_move_legal(pos Point) bool {
 
 	is_suicide := game.is_suicide(pos)
 	is_eating := game.is_eating(pos)
+	game.eat(pos)
 
 	if is_suicide {
 		if is_eating {
@@ -139,26 +124,74 @@ func (game *Game) is_move_legal(pos Point) bool {
 		}
 	}
 
-
-
 	return true
 }
 
+func (game *Game) eat(pos Point) bool {
+	var groups [4][]Point
+	var liberties [4][]Point
+	var to_eat [4]bool
+	var color int
+
+
+	groups[0], liberties[0], color = game.SelectGroup(Point{pos.X - 1, pos.Y})
+	if len(liberties[0]) == 1 && color != game.Turn {
+		to_eat[0] = true
+	}
+	groups[1], liberties[1], color = game.SelectGroup(Point{pos.X + 1, pos.Y})
+	if len(liberties[1]) == 1 && color != game.Turn {
+		to_eat[1] = true
+	}
+	groups[2], liberties[2], color = game.SelectGroup(Point{pos.X, pos.Y - 1})
+	if len(liberties[2]) == 1 && color != game.Turn {
+		to_eat[2] = true
+	}
+	groups[3], liberties[3], color = game.SelectGroup(Point{pos.X, pos.Y + 1})
+	if len(liberties[3]) == 1 && color != game.Turn {
+		to_eat[3] = true
+	}
+
+	for i := range to_eat {
+		if to_eat[i] {
+			var count uint = 0
+			for point := range groups[i] {
+				game.Grid[groups[i][point].X][groups[i][point].Y] = Empty
+				count++
+			}
+			game.Score[game.Turn] += count
+		}
+	}
+
+	if to_eat[0] || to_eat[1] || to_eat[2] || to_eat[3] {
+		return true
+	}
+	return false
+}
+
 func (game *Game) is_eating(pos Point) bool {
-	_, liberties := game.SelectGroup(Point{pos.X - 1, pos.Y})
-	if len(liberties) == 1 {
-		return true
+	var liberties [4][]Point
+	var to_eat [4]bool
+	var color int
+
+
+	_, liberties[0], color = game.SelectGroup(Point{pos.X - 1, pos.Y})
+	if len(liberties[0]) == 1 && color != game.Turn {
+		to_eat[0] = true
 	}
-	_, liberties = game.SelectGroup(Point{pos.X + 1, pos.Y})
-	if len(liberties) == 1 {
-		return true
+	_, liberties[1], color = game.SelectGroup(Point{pos.X + 1, pos.Y})
+	if len(liberties[1]) == 1 && color != game.Turn {
+		to_eat[1] = true
 	}
-	_, liberties = game.SelectGroup(Point{pos.X, pos.Y - 1})
-	if len(liberties) == 1 {
-		return true
+	_, liberties[2], color = game.SelectGroup(Point{pos.X, pos.Y - 1})
+	if len(liberties[2]) == 1 && color != game.Turn {
+		to_eat[2] = true
 	}
-	_, liberties = game.SelectGroup(Point{pos.X, pos.Y + 1})
-	if len(liberties) == 1 {
+	_, liberties[3], color = game.SelectGroup(Point{pos.X, pos.Y + 1})
+	if len(liberties[3]) == 1 && color != game.Turn {
+		to_eat[3] = true
+	}
+
+	if to_eat[0] || to_eat[1] || to_eat[2] || to_eat[3] {
 		return true
 	}
 	return false
@@ -194,6 +227,31 @@ func (game *Game) is_suicide(pos Point) bool {
 
 		return true
 	}
+
+	if !up {
+		_, liberties, _ := game.SelectGroup(Point{pos.X, pos.Y-1})
+		if len(liberties) == 1 {
+			return true
+		}
+	}
+	if !down {
+		_, liberties, _ := game.SelectGroup(Point{pos.X, pos.Y+1})
+		if len(liberties) == 1 {
+			return true
+		}
+	}
+	if !left {
+		_, liberties, _ := game.SelectGroup(Point{pos.X-1, pos.Y})
+		if len(liberties) == 1 {
+			return true
+		}
+	}
+	if !right {
+		_, liberties, _ := game.SelectGroup(Point{pos.X+1, pos.Y})
+		if len(liberties) == 1 {
+			return true
+		}
+	}
 	return false
 }
 
@@ -209,14 +267,15 @@ func IsOutOfRange(pos Point, size int) bool {
 	return false
 }
 
-func (game *Game) SelectGroup(pos Point) ([]Point, []Point) {
+func (game *Game) SelectGroup(pos Point) ([]Point, []Point, int) {
 	if IsOutOfRange(pos, len(game.Grid)) || game.Grid[pos.X][pos.Y] == Empty {
-		return nil, nil
+		return nil, nil, Empty
 	}
 
 	var points []Point
 	var liberties []Point
 	var visited = make(map[Point]bool)
+	var color = game.Grid[pos.X][pos.Y]
 
 	var traverse func(Point)
 	traverse = func(p Point) {
@@ -245,7 +304,7 @@ func (game *Game) SelectGroup(pos Point) ([]Point, []Point) {
 	}
 	traverse(pos)
 
-	return points, liberties
+	return points, liberties, color
 }
 
 func Play() {
@@ -262,7 +321,7 @@ func Play() {
 	game.MoveWithoutRules(Point{1, 0}, White)
 	game.MoveWithoutRules(Point{3, 0}, White)
 
-	group, liberties := game.SelectGroup(Point{1, 1})
+	group, liberties, _ := game.SelectGroup(Point{1, 1})
 	Println(group, liberties)
 
 	for _, row := range game.Grid {
