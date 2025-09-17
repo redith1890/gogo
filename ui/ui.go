@@ -89,6 +89,11 @@ func Draw() {
 				}
 			}
 
+			if rl.IsKeyPressed(rl.KeyP) {
+				game.Move(Pass)
+
+			}
+
 			if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 				for row := range VisualGrid {
 					for col := range VisualGrid[row]{
@@ -98,8 +103,8 @@ func Draw() {
 					}
 				}
 			}
-			white_score := Sprintf("W %d", game.Score[White])
-			black_score := Sprintf("B %d", game.Score[Black])
+			white_score := Sprintf("W %d", game.Score[White-1])
+			black_score := Sprintf("B %d", game.Score[Black-1])
 			rl.DrawText(white_score, 20, 5, 22, rl.Blue)
 			rl.DrawText(black_score, 100, 5, 22, rl.Blue)
 
@@ -128,11 +133,13 @@ func Draw() {
 							rl.DrawCircleV(middle_point, spacing/2, rl.Black)
 						case White:
 							middle_point := get_grid_middle_pos(Point{x, y})
-							// middle_point := rl.Vector2{VisualGrid[x][y].X + VisualGrid[x][y].Width/2, VisualGrid[x][y].Y + VisualGrid[x][y].Height/2}
 							rl.DrawCircleV(middle_point, spacing/2, rl.White)
 						default:;
 					}
 				}
+			}
+			if rl.IsKeyPressed(rl.KeyEnter) {
+				game.UndoLastMove()
 			}
 		rl.EndDrawing()
 	}
