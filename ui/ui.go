@@ -7,15 +7,15 @@ import (
 )
 
 const board_size = 19
-var VisualGrid [board_size][board_size]rl.Rectangle
-var Grid [board_size][board_size]int
+var VisualBoard [board_size][board_size]rl.Rectangle
+var Board [board_size][board_size]int
 var mouse_position rl.Vector2
 
 
 func get_grid_point(game Game, pos rl.Vector2) (Point, bool) {
-	for x := range VisualGrid {
-		for y := range VisualGrid[x]{
-			if rl.CheckCollisionPointRec(mouse_position, VisualGrid[x][y]) {
+	for x := range VisualBoard {
+		for y := range VisualBoard[x]{
+			if rl.CheckCollisionPointRec(mouse_position, VisualBoard[x][y]) {
 				return Point{X: x, Y:y}, true
 			}
 		}
@@ -24,7 +24,7 @@ func get_grid_point(game Game, pos rl.Vector2) (Point, bool) {
 }
 
 func get_grid_middle_pos(p Point) rl.Vector2 {
-	pos := VisualGrid[p.X][p.Y]
+	pos := VisualBoard[p.X][p.Y]
 	return rl.Vector2{pos.X + pos.Width/2, pos.Y + pos.Height/2}
 }
 
@@ -45,9 +45,12 @@ func Draw() {
 		spacing,
 	}
 
+	var fps int32
+
 
 
 	grid_debug_lines := false
+	scoring := false
 
 	game := NewGame(board_size, Black)
 	Println(game)
@@ -60,14 +63,16 @@ func Draw() {
           pos_point.Width,
           pos_point.Height,
       }
-      VisualGrid[x][y] = rec_pos
-      Grid[x][y] = Empty
+      VisualBoard[x][y] = rec_pos
+      Board[x][y] = Empty
     }
 	}
 
 	for !rl.WindowShouldClose() {
 
 		rl.BeginDrawing()
+			fps = rl.GetFPS()
+			rl.DrawText(Sprintf("%d", fps), 830, 10, 22, rl.Green)
 			mouse_position = rl.GetMousePosition()
 
 			rl.ClearBackground(rl.Beige)
@@ -75,13 +80,16 @@ func Draw() {
 			if rl.IsKeyPressed(rl.KeySpace) {
 				grid_debug_lines = !grid_debug_lines
 			}
+			if rl.IsKeyPressed(rl.KeyC) {
+				scoring = !scoring
+			}
 
 			if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
 				pos, exists := get_grid_point(game, mouse_position)
 				if(exists) {
 					points, liberties, _ := game.SelectGroup(pos)
 					for _, point := range points {
-						Println(get_grid_middle_pos(point))
+						// Println(get_grid_middle_pos(point))
 						rl.DrawCircleLinesV(get_grid_middle_pos(point), 1, rl.Yellow)
 					}
 					Println("points: ", points)
@@ -91,13 +99,12 @@ func Draw() {
 
 			if rl.IsKeyPressed(rl.KeyP) {
 				game.Move(Pass)
-
 			}
 
 			if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-				for row := range VisualGrid {
-					for col := range VisualGrid[row]{
-						if rl.CheckCollisionPointRec(mouse_position, VisualGrid[row][col]) {
+				for row := range VisualBoard {
+					for col := range VisualBoard[row]{
+						if rl.CheckCollisionPointRec(mouse_position, VisualBoard[row][col]) {
 							game.Move(Point{row, col})
 						}
 					}
@@ -122,12 +129,12 @@ func Draw() {
 					2, rl.Red)
 			}
 
-			for x := range VisualGrid {
-				for y := range VisualGrid[x] {
+			for x := range VisualBoard {
+				for y := range VisualBoard[x] {
 					if grid_debug_lines {
-						rl.DrawRectangleLinesEx(VisualGrid[x][y], 2, rl.Black)
+						rl.DrawRectangleLinesEx(VisualBoard[x][y], 2, rl.Black)
 					}
-					switch game.Grid[x][y] {
+					switch game.Board[x][y] {
 						case Black:
 							middle_point := get_grid_middle_pos(Point{x, y})
 							rl.DrawCircleV(middle_point, spacing/2, rl.Black)
@@ -135,6 +142,23 @@ func Draw() {
 							middle_point := get_grid_middle_pos(Point{x, y})
 							rl.DrawCircleV(middle_point, spacing/2, rl.White)
 						default:;
+					}
+				}
+			}
+			if scoring {
+				marked_dead := make([][]bool, board_size)
+				for i := range len(marked_dead) {
+					marked_dead[i] = make([]bool, board_size)
+				}
+				scored := AreaScoring(game.Board, marked_dead)
+				for x := range scored {
+					for y := range scored[x] {
+						if scored[x][y] == White {
+							rl.DrawRectangleRec(VisualBoard[x][y], rl.LightGray)
+						}
+						if scored[x][y] == Black {
+							rl.DrawRectangleRec(VisualBoard[x][y], rl.DarkGray)
+						}
 					}
 				}
 			}
