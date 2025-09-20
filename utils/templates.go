@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	. "go-online/strings"
+	. "gogo/strings"
 	"path/filepath"
 	"io/fs"
 )

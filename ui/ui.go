@@ -3,7 +3,7 @@ package ui
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	."fmt"
-	. "go-online/engine"
+	. "gogo/engine"
 )
 
 const board_size = 19

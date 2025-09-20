@@ -2,15 +2,15 @@ package handlers
 
 import (
 	. "fmt"
-	// . "go-online/strings"
+	// . "gogo/strings"
 	"net/http"
 	// "slices"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	. "go-online/globals"
-	. "go-online/models"
-	// . "go-online/utils"
+	. "gogo/globals"
+	. "gogo/models"
+	// . "gogo/utils"
 	"time"
 )
 

@@ -3,7 +3,7 @@ package models
 import (
 	"go.etcd.io/bbolt"
 	"time"
-	. "go-online/globals"
+	. "gogo/globals"
 	"bytes"
 	"encoding/gob"
 )

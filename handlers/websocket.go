@@ -6,7 +6,7 @@ import (
 	"time"
 	"encoding/json"
 	"golang.org/x/net/websocket"
-	. "go-online/globals"
+	. "gogo/globals"
 )
 
 type ConnFlag int

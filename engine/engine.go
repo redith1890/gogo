@@ -3,7 +3,7 @@ package engine
 import (
 	. "fmt"
 	"math/rand"
-	// "go-online/ui"
+	// "gogo/ui"
 )
 type Color uint8
 type Grid [][]int
@@ -330,7 +330,7 @@ func (game *Game) UndoLastMoveWithoutRules() {
 	}
 }
 
-// TODO: Move manage eat here 
+// TODO: Move manage eat here
 func (game *Game) MoveWithoutRules(pos Point, color int) {
 	// Temporal.
 	if pos != Pass {

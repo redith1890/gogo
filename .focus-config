@@ -1,7 +1,7 @@
 [16]  # Version number. Do not delete.
 
 [[workspace]]
-/home/redith/Documents/go-online
+/home/redith/Documents/gogo
 
 [ignore]
 .git
@@ -11,7 +11,7 @@ global.focus-config
 [[settings]]
 tab_size:                                           2
 [[build commands]]
-build_working_dir:      /home/redith/Documents/go-online
+build_working_dir:      /home/redith/Documents/gogo
 open_panel_on_build:    true
 clear_build_output_before_running: true
 error_regex:            ^(?P<file>.*):(?P<line>\d+):(?P<col>\d+): (?P<type>error|warning): (?P<msg>.*) (\[(?P<msg1>.*)\])?$  # see examples below
