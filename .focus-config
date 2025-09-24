@@ -18,9 +18,9 @@ error_regex:            ^(?P<file>.*):(?P<line>\d+):(?P<col>\d+): (?P<type>error
 auto_jump_to_error:     false
 
 [Debug Build]
-build_command:          go build -o goonline
+build_command:          go build -o gogo
 key_binding:            F5
 [Debug Build And Run]
-build_command:					go build -o goonline
+build_command:					go build -o gogo
 key_binding:						F6
-run_command:						./goonline
+run_command:						./gogo

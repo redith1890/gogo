@@ -56,13 +56,13 @@ func mark_reachability(
 		if reaches_pla[y][x] {
 			return
 		}
-		if stones[y][x] == opp(pla) && !marked_dead[y][x] {
+		if stones[y][x] == Opp(pla) && !marked_dead[y][x] {
 			return
 		}
 
 		reaches_pla[y][x] = true
 
-		if connection_blocks != nil && connection_blocks[y][x] == opp(pla) {
+		if connection_blocks != nil && connection_blocks[y][x] == Opp(pla) {
 			return
 		}
 
