@@ -5,8 +5,12 @@ import (
 	"math/rand"
 )
 
-type Grid [][]int
+type Grid [][]Color
+
 // Empty has to be 0 or refactorize it, black and white have to be 1 and 2 but only because the implementation of Opp()
+
+type Color int
+
 const (
 	Empty = iota
 	Black
@@ -23,14 +27,14 @@ type Point struct {
 
 type Move struct {
 	pos Point
-	// Color is not needed on formal games but it is if the game have branch/no-rules features.
-	Color int
+	// color is not needed on formal games but it is if the game have branch/no-rules features.
+	color Color
 }
 
 type Game struct {
 	Board Grid
 	Moves []Move
-	Turn  int
+	Turn  Color
 	Eaten [2]uint
 	Score [2]uint
 }
@@ -51,11 +55,11 @@ func (p Point) Right() Point {
 	return Point{p.X + 1, p.Y}
 }
 
-func NewGame(size int, start_turn int) Game {
+func NewGame(size int, start_turn Color) Game {
 
-	new_grid := make([][]int, size)
+	new_grid := make([][]Color, size)
 	for y := range new_grid {
-		new_grid[y] = make([]int, size)
+		new_grid[y] = make([]Color, size)
 		for x := range new_grid[y] {
 			new_grid[y][x] = Empty
 		}
@@ -78,7 +82,7 @@ func NewGame(size int, start_turn int) Game {
 
 }
 
-func Opp(color int) int {
+func Opp(color Color) Color {
 	return 3 - color
 }
 
@@ -103,11 +107,11 @@ func (game *Game) Move(pos Point) bool {
 	return true
 }
 
-func (game *Game) get_started_turn() int {
+func (game *Game) get_started_turn() Color {
 	if len(game.Moves) <= 0 {
 		return game.Turn
 	}
-	return game.Moves[0].Color
+	return game.Moves[0].color
 }
 
 func Eq[T comparable](a, b [][]T) bool {
@@ -129,23 +133,24 @@ func Eq[T comparable](a, b [][]T) bool {
 }
 
 func (game *Game) Copy() Game {
-	new_grid := make([][]int, len(game.Board))
+	new_grid := make([][]Color, len(game.Board))
 	for i := range game.Board {
-		new_grid[i] = append([]int(nil), game.Board[i]...)
+		new_grid[i] = append([]Color(nil), game.Board[i]...)
 	}
 
 	new_moves := append([]Move(nil), game.Moves...)
 
-	return Game {
+	return Game{
 		Board: new_grid,
 		Moves: new_moves,
-		Turn: game.Turn,
+		Turn:  game.Turn,
 		Eaten: game.Eaten,
 		Score: game.Score,
 	}
 }
 
 const ko_repetition_len = 10
+
 // Japanese
 func (game *Game) is_ko(pos Point) bool {
 	buffer_game := game.Copy()
@@ -176,7 +181,6 @@ func (game *Game) is_ko(pos Point) bool {
 
 func (game *Game) is_move_legal(pos Point) bool {
 
-
 	if game.Board[pos.Y][pos.X] != Empty {
 		// Println(game.Board[pos.Y][pos.X])
 		return false
@@ -197,7 +201,7 @@ func (game *Game) is_move_legal(pos Point) bool {
 	return true
 }
 
-func clean_grid(grid [][]int) {
+func clean_grid(grid Grid) {
 	for y := range grid {
 		for x := range grid[y] {
 			grid[y][x] = Empty
@@ -217,8 +221,8 @@ func (game *Game) UndoLastMove() {
 	new_game := NewGame(size, game.get_started_turn())
 
 	for _, move := range current_moves {
-		new_game.Turn = move.Color
-		new_game.MoveWithoutRules(move.pos, move.Color)
+		new_game.Turn = move.color
+		new_game.MoveWithoutRules(move.pos, move.color)
 	}
 	*game = new_game
 	game.Board.Print()
@@ -228,8 +232,7 @@ func (game *Game) eat(pos Point) bool {
 	var groups [4][]Point
 	var liberties [4][]Point
 	var to_eat [4]bool
-	var color int
-
+	var color Color
 
 	groups[0], liberties[0], color = game.SelectGroup(Point{pos.X, pos.Y - 1})
 	if len(liberties[0]) == 1 && color != game.Turn {
@@ -268,8 +271,7 @@ func (game *Game) eat(pos Point) bool {
 func (game *Game) is_eating(pos Point) bool {
 	var liberties [4][]Point
 	var to_eat [4]bool
-	var color int
-
+	var color Color
 
 	_, liberties[0], color = game.SelectGroup(Point{pos.X, pos.Y - 1})
 	if len(liberties[0]) == 1 && color != game.Turn {
@@ -326,7 +328,7 @@ func (game *Game) UndoLastMoveWithoutRules() {
 	}
 }
 
-func (game *Game) MoveWithoutRules(pos Point, color int) {
+func (game *Game) MoveWithoutRules(pos Point, color Color) {
 	if pos != Pass {
 		game.Turn = color
 		game.eat(pos)
@@ -335,7 +337,7 @@ func (game *Game) MoveWithoutRules(pos Point, color int) {
 	game.add_move(pos)
 }
 
-func (game *Game) MoveWithoutRulesWithoutEat(pos Point, color int) {
+func (game *Game) MoveWithoutRulesWithoutEat(pos Point, color Color) {
 	if pos != Pass {
 		game.Board[pos.Y][pos.X] = color
 	}
@@ -349,7 +351,7 @@ func IsOutOfRange(pos Point, size int) bool {
 	return false
 }
 
-func (game *Game) SelectGroup(pos Point) ([]Point, []Point, int) {
+func (game *Game) SelectGroup(pos Point) ([]Point, []Point, Color) {
 	if IsOutOfRange(pos, len(game.Board)) || game.Board[pos.Y][pos.X] == Empty {
 		return nil, nil, Empty
 	}
@@ -391,32 +393,30 @@ func (game *Game) SelectGroup(pos Point) ([]Point, []Point, int) {
 
 func (grid Grid) Print() {
 	for y := 0; y < len(grid); y++ {
-    for x := 0; x < len(grid[y]); x++ {
-      switch grid[y][x] {
-	      case Empty:
-	        Print(". ")
-	      case Black:
-          Print("B ")
-        case White:
-          Print("W ")
-        default:
-	        Print("? ")
-        }
-      }
-      Println()
-    }
+		for x := 0; x < len(grid[y]); x++ {
+			switch grid[y][x] {
+			case Empty:
+				Print(". ")
+			case Black:
+				Print("B ")
+			case White:
+				Print("W ")
+			default:
+				Print("? ")
+			}
+		}
+		Println()
+	}
 }
 
 func (move Move) Print() {
 	Printf("X: %d, Y: %d", move.pos.X, move.pos.Y)
-	if move.Color == Black {
+	if move.color == Black {
 		Println(" BLACK")
 	} else {
 		Println(" White")
 	}
 }
-
-
 
 func test_corner_area_scoring() {
 	size := 9
@@ -454,23 +454,17 @@ func test_corner_area_scoring() {
 	game.MoveWithoutRules(Point{8, 1}, Black)
 	game.MoveWithoutRules(Point{8, 0}, Black)
 
-
-
 	game.Board.Print()
 	Println("=====================================")
 
 	marked_dead := make([][]bool, size)
-	for i:= range marked_dead {
+	for i := range marked_dead {
 		marked_dead[i] = make([]bool, size)
 	}
 
 	result := AreaScoring(game.Board, marked_dead)
 
 	Grid(result).Print()
-
-
-
-
 
 }
 

@@ -9,7 +9,7 @@
 .focus-config.bak
 global.focus-config
 [[settings]]
-tab_size:                                           2
+tab_size:                                           4
 [[build commands]]
 build_working_dir:      /home/redith/Documents/gogo
 open_panel_on_build:    true
