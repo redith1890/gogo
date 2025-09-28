@@ -16,3 +16,9 @@ func (s Set[T]) Has(value T) bool {
 func (s Set[T]) Remove(value T) {
 	delete(s, value)
 }
+
+func assert(cond bool, msg string) {
+    if !cond {
+        panic("Assertion failed: " + msg)
+    }
+}
