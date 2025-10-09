@@ -30,6 +30,17 @@ func itob(id uint64) []byte {
 	return key[:]
 }
 
+func btoi(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b)
+}
+
+func DecodeGob(data []byte, out interface{}) error {
+	if data == nil {
+		return nil
+	}
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(out)
+}
+
 func CreatePlayer(p Player) (uint64, error) {
 	var id uint64
 	return id, DB.Update(func(tx Transaction) error {
@@ -47,23 +58,74 @@ func CreatePlayer(p Player) (uint64, error) {
 	})
 }
 
-func GetPlayer(name string) (*Player, error) {
+func GetPlayerById(id uint64) *Player {
 	var p Player
-	err := DB.View(func(tx Transaction) error {
+	DB.View(func(tx Transaction) error {
 		b := tx.Bucket([]byte("player"))
-		v := b.Get([]byte(name))
+		v := b.Get([]byte(itob(id)))
 		if v == nil {
 			return nil
 		}
-		return gob.NewDecoder(bytes.NewReader(v)).Decode(&p)
+		return DecodeGob(v, &p)
 	})
-	if err != nil {
-		return nil, err
+	return &p
+}
+
+func GetPlayerByUsername(username string) *Player {
+	var p Player
+	found := false
+	DB.View(func(tx Transaction) error {
+		b := tx.Bucket([]byte("player"))
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			DecodeGob(v, &p)
+			if p.Name == username {
+				found = true
+				break
+			}
+		}
+		return nil
+	})
+
+	if !found {
+		return nil
 	}
-	if p.Name == "" {
-		return nil, nil
-	}
-	return &p, nil
+	return &p
+}
+
+func GetAllPlayersIds() []uint64 {
+	var ids []uint64
+
+	DB.View(func(tx Transaction) error {
+		b := tx.Bucket([]byte("player"))
+		// TODO batch this
+		c := b.Cursor()
+
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			ids = append(ids, btoi(k))
+		}
+		return nil
+	})
+	return ids
+}
+
+func GetAllPlayersUsernames() []string {
+	var usernames []string
+
+	DB.View(func(tx Transaction) error {
+		b := tx.Bucket([]byte("player"))
+		// TODO batch this
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var player Player
+			DecodeGob(v, &player)
+			usernames = append(usernames, player.Name)
+		}
+		return nil
+	})
+	return usernames
 }
 
 func CreateGame(game Game) (uint64, error) {

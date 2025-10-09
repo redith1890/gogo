@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 	// "time"
-	// bolt "go.etcd.io/bbolt"
+	// "sync"
 )
 
 func cmd() {
@@ -23,8 +23,23 @@ func cmd() {
 				Println(session.Values["PlayerId"])
 			}
 			Store.Mu.RUnlock()
+		case "usernames":
+			usernames := GetAllPlayersUsernames()
+			for _, username := range usernames {
+				Println(username)
+			}
 		default:
-			Println("Comando no reconocido:", cmd)
+			if strings.HasPrefix(cmd, "player") {
+				username := strings.TrimSpace(cmd[len("player"):])
+				player := GetPlayerByUsername(username)
+				if player == nil {
+					Println("user does not exists")
+				} else {
+					Println(player)
+				}
+			} else {
+				Println("Comando no reconocido:", cmd)
+			}
 		}
 	}
 }
@@ -37,11 +52,17 @@ func main() {
 
 	// Web server
 
-	InitDB()
+	err := InitDB()
+	if err != nil {
+		Println(err)
+		return
+	}
+
 	defer DB.Close()
 	LoadTemplates()
-	go cmd()
 	go CleanupSessions()
+	go cmd()
+
 
 	MainServer = NewServer() // for web sockets
 
@@ -61,7 +82,7 @@ func main() {
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	err := http.ListenAndServe(":8080", SessionMiddleware(mux))
+	err = http.ListenAndServe(":8080", SessionMiddleware(mux))
 	if err != nil {
 		Println("Error en servidor:", err)
 		os.Exit(1)

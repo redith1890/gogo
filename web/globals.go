@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "fmt"
+	// . "fmt"
 	bolt "go.etcd.io/bbolt"
 	"log"
 	"sync"
@@ -11,13 +11,12 @@ import (
 
 var DB *bolt.DB
 
-func InitDB() {
+func InitDB() error {
 	path := "my.db"
 	var err error
 	DB, err = bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		Println(err)
-		return
+		return err
 	}
 	err = DB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("player"))
@@ -27,6 +26,7 @@ func InitDB() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	return err
 }
 
 type Session struct {

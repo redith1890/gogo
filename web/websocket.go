@@ -73,7 +73,7 @@ func (s *Server) PingLoop() {
 	ticker := time.NewTicker(25 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		Println(s.conns)
+		// Println(s.conns)
 		for conn := range s.conns {
 			if err := websocket.Message.Send(conn, "ping"); err != nil {
 				Println("Error enviando ping, cerrando conexión:", err)
