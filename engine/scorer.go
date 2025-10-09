@@ -5,8 +5,9 @@ package engine
 //
 
 import (
-	"strings"
 	. "fmt"
+	"os"
+	"strings"
 )
 
 type EyeId int
@@ -25,9 +26,8 @@ func make_array2[T any](ysize, xsize int, init T) [][]T {
 	return grid
 }
 
-
 type LocScore struct {
-	is_territory_for        Color
+	IsTerritoryFor          Color
 	belongs_to_seki_group   Color
 	is_false_eye            bool
 	is_unscorable_false_eye bool
@@ -54,79 +54,209 @@ type ChainInfo struct {
 }
 
 type MacroChainInfo struct {
-	macrochain_id ChainId
-	region_id RegionId
-	color Color
-	points [][2]int
-	chains Set[ChainId]
+	macrochain_id      ChainId
+	region_id          RegionId
+	color              Color
+	points             [][2]int
+	chains             Set[ChainId]
 	eye_neighbors_from map[EyeId]Set[[2]int]
 }
 
 type EyeInfo struct {
-	pla Color
-	region_id RegionId
-	eye_id EyeId
-	potential_points Set[[2]int]
-	real_points Set[[2]int]
+	pla                       Color
+	region_id                 RegionId
+	eye_id                    EyeId
+	potential_points          Set[[2]int]
+	real_points               Set[[2]int]
 	macrochain_neighbors_from map[MacroChainId]Set[[2]int]
-	is_loose bool
-	eye_value int
+	is_loose                  bool
+	eye_value                 int
 }
 
 type EyePointInfo struct {
-	adj_points [][2]int
-	adj_eye_points [][2]int
-	num_empty_adj_points int
-	num_empty_adj_false_points int
-	num_empty_adj_eye_points int
-	num_opp_adj_false_points int
-	is_false_eye_poke bool
-	num_moves_to_block int
+	adj_points                            [][2]int
+	adj_eye_points                        [][2]int
+	num_empty_adj_points                  int
+	num_empty_adj_false_points            int
+	num_empty_adj_eye_points              int
+	num_opp_adj_false_points              int
+	is_false_eye_poke                     bool
+	num_moves_to_block                    int
 	num_blockables_depending_on_this_spot int
 }
 
-func TerritoryScoring(stones [][]Color, marked_dead [][]bool, score_false_eyes bool) {
+func (region_info RegionInfo) Print() {
+	Println("region_id: ", region_info.region_id)
+	Println("color: ", region_info.color)
+	Println("region_and_dame: ", region_info.region_and_dame)
+	Println("eyes: ", region_info.eyes)
+}
+
+func TerritoryScoring(stones [][]Color, marked_dead [][]bool, score_false_eyes bool) [][]LocScore {
 	xsize := len(stones)
 	ysize := len(stones[0])
+	os.Truncate("golang.log", 0)
 
 	connection_blocks := make([][]Color, ysize)
 	for i := 0; i < xsize; i++ {
 		connection_blocks[i] = make([]Color, xsize)
 	}
 	mark_connection_blocks(ysize, xsize, stones, marked_dead, connection_blocks)
+	PrintGrid("connection_blocks", connection_blocks)
 
 	strict_reaches_black := make_array2[bool](ysize, xsize, false)
 	strict_reaches_white := make_array2[bool](ysize, xsize, false)
 	mark_reachability(ysize, xsize, stones, marked_dead, nil, strict_reaches_black, strict_reaches_white)
+	PrintGrid("strict_reaches_black", strict_reaches_black)
+	PrintGrid("strict_reaches_white", strict_reaches_white)
 
 	reaches_black := make_array2[bool](ysize, xsize, false)
 	reaches_white := make_array2[bool](ysize, xsize, false)
 	mark_reachability(ysize, xsize, stones, marked_dead, connection_blocks, reaches_black, reaches_white)
+	PrintGrid("reaches_black", reaches_black)
+	PrintGrid("reaches_white", reaches_white)
 
 	region_ids := make_array2[RegionId](ysize, xsize, -1)
 	region_infos_by_id := map[RegionId]RegionInfo{}
 	mark_regions(ysize, xsize, stones, marked_dead, connection_blocks, reaches_black, reaches_white, region_ids, region_infos_by_id)
+	PrintGrid("region_ids", region_ids)
+	for _, region_info := range region_infos_by_id {
+		region_info.Print()
+	}
+	// PrintGrid("region_infos_by_id", region_infos_by_id)
 
 	chain_ids := make_array2[ChainId](ysize, xsize, -1)
-	chain_infos_by_id := map[ChainId]*ChainInfo{}
+	chain_infos_by_id := map[ChainId]ChainInfo{}
 	mark_chains(ysize, xsize, stones, marked_dead, region_ids, chain_ids, chain_infos_by_id)
+	PrintGrid("chain_ids", chain_ids)
+	// PrintGrid("chain_infos_by_id", chain_infos_by_id)
 
 	macrochain_ids := make_array2[MacroChainId](ysize, xsize, -1)
 	macrochain_infos_by_id := map[MacroChainId]MacroChainInfo{}
-    mark_macrochains(ysize, xsize, stones, marked_dead, connection_blocks, region_ids, region_infos_by_id, chain_ids, chain_infos_by_id, macrochain_ids, macrochain_infos_by_id)
+	mark_macrochains(ysize, xsize, stones, marked_dead, connection_blocks, region_ids, region_infos_by_id, chain_ids, chain_infos_by_id, macrochain_ids, macrochain_infos_by_id)
+	PrintGrid("macrochain_ids", macrochain_ids)
+	// PrintGrid("macrochain_infos_by_id", macrochain_infos_by_id)
 
-    eye_ids := make_array2[EyeId](ysize, xsize, -1)
-    eye_infos_by_id := map[EyeId]EyeInfo{}
-    mark_potential_eyes(ysize, xsize, stones, marked_dead, strict_reaches_black, strict_reaches_white, region_ids, region_infos_by_id, macrochain_ids, macrochain_infos_by_id, eye_ids,eye_infos_by_id)
+	eye_ids := make_array2[EyeId](ysize, xsize, -1)
+	eye_infos_by_id := map[EyeId]EyeInfo{}
+	mark_potential_eyes(ysize, xsize, stones, marked_dead, strict_reaches_black, strict_reaches_white, region_ids, region_infos_by_id, macrochain_ids, macrochain_infos_by_id, eye_ids, eye_infos_by_id)
+	PrintGrid("eye_ids", eye_ids)
+	// PrintGrid("eye_infos_by_id", eye_infos_by_id)
 
-    is_false_eye_point := make_array2[bool](ysize, xsize, false)
-    mark_false_eye_points(ysize, xsize, region_ids, macrochain_ids, macrochain_infos_by_id, eye_infos_by_id, is_false_eye_point)
+	is_false_eye_point := make_array2[bool](ysize, xsize, false)
+	mark_false_eye_points(ysize, xsize, region_ids, macrochain_ids, macrochain_infos_by_id, eye_infos_by_id, is_false_eye_point)
+	PrintGrid("is_false_eye_point", is_false_eye_point)
 
+	mark_eye_values(ysize, xsize, stones, marked_dead, region_ids, region_infos_by_id, chain_ids, chain_infos_by_id, is_false_eye_point, eye_ids, eye_infos_by_id)
+
+	is_unscorable_false_eye_point := make_array2[bool](ysize, xsize, false)
+	mark_false_eye_points(ysize, xsize, region_ids, macrochain_ids, macrochain_infos_by_id, eye_infos_by_id, is_unscorable_false_eye_point)
+	PrintGrid("is_unscorable_false_eye_point", is_unscorable_false_eye_point)
+
+	scoring := make([][]LocScore, ysize)
+	for y := 0; y < ysize; y++ {
+		scoring[y] = make([]LocScore, xsize)
+		for x := 0; x < xsize; x++ {
+			scoring[y][x] = make_locscore()
+		}
+	}
+
+	mark_scoring(ysize, xsize, stones, marked_dead, score_false_eyes, strict_reaches_black, strict_reaches_white, region_ids, region_infos_by_id, chain_ids, chain_infos_by_id, is_false_eye_point, eye_ids, eye_infos_by_id, is_unscorable_false_eye_point, scoring)
+	territory_for := make([][]Color, ysize)
+	for y := 0; y < len(scoring); y++ {
+		territory_for[y] = make([]Color, xsize)
+		for x := 0; x < len(scoring[y]); x++ {
+			territory_for[y][x] = scoring[y][x].IsTerritoryFor
+		}
+	}
+	PrintGrid("TerritoryFor", territory_for)
+
+	return scoring
+}
+
+func mark_scoring(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, score_false_eyes bool, strict_reaches_black [][]bool, strict_reaches_white [][]bool, region_ids [][]RegionId, region_infos_by_id map[RegionId]RegionInfo, chain_ids [][]ChainId, chain_infos_by_id map[ChainId]ChainInfo, is_false_eye_point [][]bool, eye_ids [][]EyeId, eye_infos_by_id map[EyeId]EyeInfo, is_unscorable_false_eye_point [][]bool, scoring [][]LocScore) {
+	extra_black_unscoreable_points := make(Set[[2]int], 0)
+	extra_white_unscoreable_points := make(Set[[2]int], 0)
+	for y := 0; y < ysize; y++ {
+		for x := 0; x < xsize; x++ {
+			if is_unscorable_false_eye_point[y][x] && stones[y][x] != Empty && marked_dead[y][x] {
+				adjacents := [4][2]int{
+					{y - 1, x},
+					{y + 1, x},
+					{y, x - 1},
+					{y, x + 1},
+				}
+				if stones[y][x] == White {
+					for _, point := range adjacents {
+						extra_black_unscoreable_points.Add(point)
+					}
+				} else {
+					for _, point := range adjacents {
+						extra_white_unscoreable_points.Add(point)
+					}
+				}
+			}
+		}
+	}
+
+	for y := 0; y < ysize; y++ {
+		for x := 0; x < xsize; x++ {
+			s := scoring[y][x]
+			region_id := region_ids[y][x]
+			if region_id == -1 {
+				s.is_dame = true
+			} else {
+				region_info := region_infos_by_id[region_id]
+				color := region_info.color
+				total_eyes := 0
+				for eye_id := range region_info.eyes {
+					total_eyes += eye_infos_by_id[eye_id].eye_value
+				}
+				if total_eyes <= 1 {
+					s.belongs_to_seki_group = region_info.color
+				}
+				if is_false_eye_point[y][x] {
+					s.is_false_eye = true
+				}
+				if is_unscorable_false_eye_point[y][x] {
+					s.is_unscorable_false_eye = true
+				}
+				if (stones[y][x] == Empty || marked_dead[y][x]) && ((color == Black && extra_black_unscoreable_points.Has([2]int{y, x})) ||
+					(color == White && extra_white_unscoreable_points.Has([2]int{y, x}))) {
+					s.is_unscorable_false_eye = true
+				}
+				s.eye_value = 0
+				if eye_ids[y][x] != -1 {
+					s.eye_value = eye_infos_by_id[eye_ids[y][x]].eye_value
+				}
+
+				if (stones[y][x] != color || marked_dead[y][x]) &&
+					s.belongs_to_seki_group == Empty &&
+					(score_false_eyes || !s.is_unscorable_false_eye) &&
+					chain_infos_by_id[chain_ids[y][x]].region_id == region_id &&
+					!(color == White && strict_reaches_black[y][x]) &&
+					!(color == Black && strict_reaches_white[y][x]) {
+					s.IsTerritoryFor = color
+				}
+			}
+		}
+	}
+}
+
+func make_locscore() LocScore {
+	return LocScore{
+		IsTerritoryFor:          Empty,
+		belongs_to_seki_group:   Empty,
+		is_false_eye:            false,
+		is_unscorable_false_eye: false,
+		is_dame:                 false,
+		eye_value:               0,
+	}
 }
 
 func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, region_ids [][]RegionId, region_infos_by_id map[RegionId]RegionInfo, chain_ids [][]ChainId, chain_infos_by_id map[ChainId]ChainInfo, is_false_eye_point [][]bool, eye_ids [][]EyeId, eye_infos_by_id map[EyeId]EyeInfo) {
 
-	for eye_id, eye_info := range eye_infos_by_id {
+	for _, eye_info := range eye_infos_by_id {
 		pla := eye_info.pla
 		opp := Opp(pla)
 
@@ -137,18 +267,18 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 			if !is_false_eye_point[y][x] {
 				eye_info.real_points.Add([2]int{y, x})
 				info := EyePointInfo{adj_points: make([][2]int, 0), adj_eye_points: make([][2]int, 0)}
-				info_by_point[[2]int{y,x}] = info
+				info_by_point[[2]int{y, x}] = info
 			}
 		}
 
 		for tpl := range eye_info.real_points {
 			y, x := tpl[0], tpl[1]
 			info := info_by_point[[2]int{y, x}]
-			adjacents := [4][2]int {
-				{y-1, x},
-				{y+1, x},
-				{y, x-1},
-				{y, x+1},
+			adjacents := [4][2]int{
+				{y - 1, x},
+				{y + 1, x},
+				{y, x - 1},
+				{y, x + 1},
 			}
 			for _, adj := range adjacents {
 				ay, ax := adj[0], adj[1]
@@ -194,7 +324,6 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 			info.num_moves_to_block = 0
 			// info.num_moves_to_block_no_opps = 0
 
-
 			// TODO: Optize this booleans
 			for _, adj := range info.adj_points {
 				ay, ax := adj[0], adj[1]
@@ -219,10 +348,10 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 			eye_value := 0
 
 			for point := range eye_info.real_points {
-			    if pinfo, ok := info_by_point[point]; ok && pinfo.num_moves_to_block <= 1 {
-			        eye_value = 1
-			        break
-		        }
+				if pinfo, ok := info_by_point[point]; ok && pinfo.num_moves_to_block <= 1 {
+					eye_value = 1
+					break
+				}
 			}
 
 			for point_to_delete := range eye_info.real_points {
@@ -257,7 +386,7 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 						num_definite_eye_pieces++
 					}
 				}
-				eye_value := max(eye_value, num_definite_eye_pieces)
+				eye_value = max(eye_value, num_definite_eye_pieces)
 			}
 
 			marked_dead_count := 0
@@ -275,43 +404,43 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 			}
 
 			if eye_value < 2 {
-			    total := len(eye_info.real_points)
-			    count1 := 0
-			    count2 := 0
-			    count3 := 0
-			    for point := range eye_info.real_points {
-			        y, x := point[0], point[1]
-			        if info_by_point[point].num_moves_to_block >= 1 {
-			            count1++
-			        }
-			        if info_by_point[point].num_moves_to_block >= 2 {
-			            count2++
-			        }
-			        if stones[y][x] == opp && len(info_by_point[point].adj_eye_points) >= 2 {
-			            count3++
-			        }
-			    }
-			    if total-count1-count2-count3 >= 6 {
-			    	eye_value = max(eye_value, 2)
-			    }
+				total := len(eye_info.real_points)
+				count1 := 0
+				count2 := 0
+				count3 := 0
+				for point := range eye_info.real_points {
+					y, x := point[0], point[1]
+					if info_by_point[point].num_moves_to_block >= 1 {
+						count1++
+					}
+					if info_by_point[point].num_moves_to_block >= 2 {
+						count2++
+					}
+					if stones[y][x] == opp && len(info_by_point[point].adj_eye_points) >= 2 {
+						count3++
+					}
+				}
+				if total-count1-count2-count3 >= 6 {
+					eye_value = max(eye_value, 2)
+				}
 			}
 
 			if eye_value < 2 {
-			    count1 := 0
-			    count2 := 0
-			    for point := range eye_info.real_points {
-			        y, x := point[0], point[1]
-			        if stones[y][x] == Empty && len(info_by_point[point].adj_eye_points) >= 4 {
-			            count1++
-			        }
-			        if stones[y][x] == Empty && len(info_by_point[point].adj_eye_points) >= 3 {
-			            count2++
-			        }
-			    }
+				count1 := 0
+				count2 := 0
+				for point := range eye_info.real_points {
+					y, x := point[0], point[1]
+					if stones[y][x] == Empty && len(info_by_point[point].adj_eye_points) >= 4 {
+						count1++
+					}
+					if stones[y][x] == Empty && len(info_by_point[point].adj_eye_points) >= 3 {
+						count2++
+					}
+				}
 
-			    if count1+count2 >= 6 {
-			    	eye_value = max(eye_value, 2)
-			    }
+				if count1+count2 >= 6 {
+					eye_value = max(eye_value, 2)
+				}
 			}
 
 			if eye_value < 2 {
@@ -409,20 +538,64 @@ func mark_eye_values(ysize int, xsize int, stones [][]Color, marked_dead [][]boo
 					// possible_omissions = append(possible_omissions, nil)
 
 					all_good_for_defender := true
-					for omitter := range possible_omissions {
-						remaining_shape := make(Set[[2]int], len(dead_opps_in_eye))
-						copy(remaining_shape, dead_opps_in_eye)
+					for _, omitted := range possible_omissions {
+						remaining_shape := Copy(dead_opps_in_eye)
+						for _, point := range unplayable_in_eye {
+							if point != omitted {
+								remaining_shape.Add(point)
+							}
+						}
+						initial_piece_count := len(get_pieces(ysize, xsize, remaining_shape, make(Set[[2]int], 0)))
+						num_bottlenecks := 0
+						num_non_bottlenecks_high_degree := 0
+						for point_to_delete := range remaining_shape {
+							dy, dx := point_to_delete[0], point_to_delete[1]
+							set_tmp := make(Set[[2]int], 0)
+							set_tmp.Add(point_to_delete)
+							if len(get_pieces(ysize, xsize, remaining_shape, set_tmp)) > initial_piece_count {
+								num_bottlenecks++
+							} else if count_adjacents_in(dy, dx, remaining_shape) >= 3 {
+								num_non_bottlenecks_high_degree++
+							}
+						}
+						bonus := 0
+						if len(remaining_shape) >= 7 {
+							bonus = 1
+						}
+						if initial_piece_count-num_throwins+(num_bottlenecks+num_non_bottlenecks_high_degree+bonus)/2 < 2 {
+							all_good_for_defender = false
+							break
+						}
+					}
+					if all_good_for_defender {
+						eye_value = 2
 					}
 				}
 			}
-
+			eye_value = min(eye_value, 2)
+			eye_info.eye_value = eye_value
 		}
-
 	}
 }
 
+func count_adjacents_in(y int, x int, points Set[[2]int]) int {
+	count := 0
+	adjacents := [4][2]int{
+		{y - 1, x},
+		{y + 1, x},
+		{y, x - 1},
+		{y, x + 1},
+	}
+	for _, a := range adjacents {
+		if points.Has(a) {
+			count++
+		}
+	}
+	return count
+}
+
 func is_on_border(y int, x int, ysize int, xsize int) bool {
-	return y == 0 || x == 0 || y == ysize - 1 || x == xsize - 1
+	return y == 0 || x == 0 || y == ysize-1 || x == xsize-1
 }
 
 func get_pieces(ysize int, xsize int, points Set[[2]int], points_to_delete Set[[2]int]) []Set[[2]int] {
@@ -437,11 +610,11 @@ func get_pieces(ysize int, xsize int, points Set[[2]int], points_to_delete Set[[
 		piece.Add(point)
 
 		y, x := point[0], point[1]
-		adjacents := [4][2]int {
-			{y-1, x},
-			{y+1, x},
-			{y, x-1},
-			{y, x+1},
+		adjacents := [4][2]int{
+			{y - 1, x},
+			{y + 1, x},
+			{y, x - 1},
+			{y, x + 1},
 		}
 		for _, point := range adjacents {
 			if points.Has(point) {
@@ -467,7 +640,7 @@ func is_pseudolegal(ysize int, xsize int, stones [][]Color, chain_ids [][]ChainI
 	if stones[y][x] != Empty {
 		return false
 	}
-	adjacents := [4][2]int {
+	adjacents := [4][2]int{
 		{y - 1, x},
 		{y + 1, x},
 		{y, x - 1},
@@ -496,7 +669,7 @@ func mark_false_eye_points(ysize int, xsize int, region_ids [][]RegionId, macroc
 				same_eye_adj_count := 0
 
 				neighbors := func(ey int, ex int) [][2]int {
-					return [][2]int {
+					return [][2]int{
 						{ey - 1, ex},
 						{ey + 1, ex},
 						{ey, ex - 1},
@@ -504,7 +677,7 @@ func mark_false_eye_points(ysize int, xsize int, region_ids [][]RegionId, macroc
 					}
 				}
 
-				for _, p := range neighbors(ey, ex){
+				for _, p := range neighbors(ey, ex) {
 					if _, ok := orig_eye_info.potential_points[p]; ok {
 						same_eye_adj_count++
 					}
@@ -569,9 +742,9 @@ func mark_false_eye_points(ysize int, xsize int, region_ids [][]RegionId, macroc
 							}
 
 							for point := range points_reached {
-								x, y := point[0], point[1]
+								y, x := point[0], point[1]
 								if is_adjacent(y, x, ey, ex) {
-									reaching_sides.Add([2]int{x, y})
+									reaching_sides.Add([2]int{y, x})
 								}
 							}
 
@@ -631,9 +804,8 @@ func find_recursively_adjacent_points(within_set Set[[2]int], from_points Set[[2
 	return expanded
 }
 
-
 func is_adjacent(y1 int, x1 int, y2 int, x2 int) bool {
-	return (y1 == y2 && (x1 == x2 + 1 || x1 == x2 - 1)) || (x1 == x2 && (y1 == y2 + 1 || y1 == y2 - 1))
+	return (y1 == y2 && (x1 == x2+1 || x1 == x2-1)) || (x1 == x2 && (y1 == y2+1 || y1 == y2-1))
 }
 
 func mark_potential_eyes(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, strict_reaches_black [][]bool, strict_reaches_white [][]bool, region_ids [][]RegionId, region_infos_by_id map[RegionId]RegionInfo, macrochain_ids [][]MacroChainId, macrochain_infos_by_id map[MacroChainId]MacroChainInfo, eye_ids [][]EyeId, eye_infos_by_id map[EyeId]EyeInfo) {
@@ -694,9 +866,9 @@ func mark_potential_eyes(ysize int, xsize int, stones [][]Color, marked_dead [][
 				eye_ids[y][x] = EyeId(eye_id)
 				potential_points.Add([2]int{y, x})
 				acc_region(y-1, x, y, x)
-                acc_region(y+1, x, y, x)
-                acc_region(y, x-1, y, x)
-                acc_region(y, x+1, y, x)
+				acc_region(y+1, x, y, x)
+				acc_region(y, x-1, y, x)
+				acc_region(y, x+1, y, x)
 			}
 			assert(macrochain_ids[y][x] == -1, "macrochain_ids[y][x] have to be -1")
 			acc_region(y, x, 10000, 10000)
@@ -717,7 +889,7 @@ func mark_macrochains(
 	region_ids [][]RegionId,
 	region_infos_by_id map[RegionId]RegionInfo,
 	chain_ids [][]ChainId,
-	chain_infos_by_id map[ChainId]*ChainInfo,
+	chain_infos_by_id map[ChainId]ChainInfo,
 	macrochain_ids [][]MacroChainId,
 	macrochain_infos_by_id map[MacroChainId]MacroChainInfo) {
 
@@ -759,7 +931,7 @@ func mark_macrochains(
 				should_recurse := false
 				if stones[y][x] == Color(pla) && !marked_dead[y][x] {
 					macrochain_ids[y][x] = MacroChainId(macrochain_id)
-					points = append(points, [2]int{y,x})
+					points = append(points, [2]int{y, x})
 					if !chains.Has(chain_id) {
 						chains.Add(chain_id)
 						chains_handled.Add(chain_id)
@@ -769,10 +941,10 @@ func mark_macrochains(
 					should_recurse = true
 				}
 				if should_recurse {
-					walk_and_accumulate(y-1,x)
-                    walk_and_accumulate(y+1,x)
-                    walk_and_accumulate(y,x-1)
-                    walk_and_accumulate(y,x+1)
+					walk_and_accumulate(y-1, x)
+					walk_and_accumulate(y+1, x)
+					walk_and_accumulate(y, x-1)
+					walk_and_accumulate(y, x+1)
 				}
 			}
 
@@ -784,7 +956,7 @@ func mark_macrochains(
 
 // In the original implementation chain_infos_by_data is a map[ChainId]ChainInfo, Itsn't map[ChainId]*ChainInfo
 // but we need a pointer to make a copy and later assign it. For now I am using a pointer.
-func mark_chains(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, region_ids [][]RegionId, chain_ids [][]ChainId, chain_infos_by_id map[ChainId]*ChainInfo) {
+func mark_chains(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, region_ids [][]RegionId, chain_ids [][]ChainId, chain_infos_by_id map[ChainId]ChainInfo) {
 	var fill_chain func(int, int, ChainId, Color, bool)
 	fill_chain = func(y int, x int, with_id ChainId, color Color, is_marked_dead bool) {
 		if !is_on_board(y, x, ysize, xsize) {
@@ -811,12 +983,16 @@ func mark_chains(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, r
 			return
 		}
 		chain_ids[y][x] = with_id
-		chain_infos_by_id[with_id].points = append(chain_infos_by_id[with_id].points, [2]int{y, x})
-		if chain_infos_by_id[with_id].region_id != region_ids[y][x] {
-			chain_infos_by_id[with_id].region_id = -1
+
+		ci := chain_infos_by_id[with_id]
+		ci.points = append(ci.points, [2]int{y, x})
+		if ci.region_id != region_ids[y][x] {
+			ci.region_id = -1
 		}
+		chain_infos_by_id[with_id] = ci
+
 		if !(color == Empty || region_ids[y][x] == chain_infos_by_id[with_id].region_id) {
-		    panic("assertion failed: contiguous chain must match region")
+			panic("assertion failed: contiguous chain must match region")
 		}
 		fill_chain(y-1, x, with_id, color, is_marked_dead)
 		fill_chain(y+1, x, with_id, color, is_marked_dead)
@@ -832,7 +1008,7 @@ func mark_chains(ysize int, xsize int, stones [][]Color, marked_dead [][]bool, r
 				next_chain_id++
 				color := stones[y][x]
 				is_marked_dead := marked_dead[y][x]
-				chain_infos_by_id[chain_id] = &ChainInfo{
+				chain_infos_by_id[chain_id] = ChainInfo{
 					chain_id,
 					region_ids[y][x],
 					color,
@@ -935,7 +1111,7 @@ func mark_connection_blocks(ysize int, xsize int, stones [][]Color, marked_dead 
 		},
 	}
 
-	for _, pla := range []Color{White, Black} {
+	for _, pla := range []Color{Black, White} {
 		opp := Opp(pla)
 		orientations := []struct {
 			pdydy, pdydx, pdxdy, pdxdx int
@@ -964,13 +1140,13 @@ func mark_connection_blocks(ysize int, xsize int, stones [][]Color, marked_dead 
 
 				if is_edge_pattern {
 					if orient.pdydy == -1 {
-						y_range = []int{pylen - 2}
+						y_range = []int{len(pattern) - 2}
 					} else if orient.pdydy == 1 {
-						y_range = []int{ysize - pylen}
+						y_range = []int{ysize - (len(pattern) - 1)}
 					} else if orient.pdxdy == -1 {
-						x_range = []int{pylen - 2}
+						x_range = []int{len(pattern) - 2}
 					} else if orient.pdxdy == 1 {
-						x_range = []int{xsize - pylen}
+						x_range = []int{xsize - (len(pattern) - 1)}
 					}
 				}
 
@@ -1105,8 +1281,8 @@ func mark_reachability(xsize int, ysize int, stones [][]Color, marked_dead [][]b
 		fill_reach(y, x+1, reaches_pla, pla)
 	}
 
-	for y := range ysize {
-		for x := range xsize {
+	for y := 0; y < ysize; y++ {
+		for x := 0; x < xsize; x++ {
 			if stones[y][x] == Black && !marked_dead[y][x] {
 				fill_reach(y, x, reaches_black, Black)
 			}

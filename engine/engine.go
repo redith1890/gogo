@@ -95,7 +95,7 @@ func (game *Game) add_move(pos Point) int {
 func (game *Game) Move(pos Point) bool {
 	if pos != Pass {
 		if !game.is_move_legal(pos) {
-			Println("| %v illegal", pos)
+			Printf("| %v illegal", pos)
 			return false
 		}
 		game.eat(pos)

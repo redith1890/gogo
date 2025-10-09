@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>go-online</title>
+		<style>
+			body {
+			font-family: Arial, sans-serif;
+			background: #f5f7fa;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			}
+			.login-container {
+			background: white;
+			padding: 2rem;
+			border-radius: 12px;
+			box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+			width: 300px;
+			text-align: center;
+			}
+			h1 {
+			margin-bottom: 1rem;
+			color: #333;
+			}
+			input {
+			width: 100%;
+			padding: 0.6rem;
+			margin-bottom: 1rem;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			}
+			button {
+			width: 100%;
+			padding: 0.6rem;
+			background: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 1rem;
+			}
+			button:hover {
+			background: #45a049;
+			}
+			.message {
+			margin-top: 1rem;
+			font-weight: bold;
+			color: #333;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="login-container">
+			<h1>go-online</h1>
+			<form id="loginForm">
+				<input type="text" name="name" placeholder="Ingresa tu nickname" required>
+				<button type="submit">Entrar</button>
+			</form>
+			<div class="message" id="message"></div>
+		</div>
+		<script>
+			const form = document.getElementById("loginForm");
+			const message = document.getElementById("message");
+
+			form.addEventListener("submit", async (e) => {
+			  e.preventDefault();
+
+			  const name = form.name.value.trim();
+			  if (!name) {
+			    message.textContent = "Por favor, ingresa tu nombre";
+			    return;
+			  }
+
+			  try {
+			    const res = await fetch("/api/login/", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ Name: name }),
+			    });
+
+			    if (!res.ok) throw new Error("Error en el servidor");
+			    const data = await res.json();
+			    if(data.redirect) {
+			    	window.location.href = data.redirect;
+			    }
+
+			  } catch (err) {
+			    message.textContent = "Error: " + err.message;
+			  }
+			});
+		</script>
+	</body>
+</html>

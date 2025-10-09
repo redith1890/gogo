@@ -1,0 +1,3 @@
+- Make errors in spanish and english
+- manage multiples connections
+- use local libraries instead of importing them with the url
