@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 )
 
-type Player struct {
+type User struct {
 	Id          uint64
 	Name        string
 	InGame      bool
@@ -18,11 +18,15 @@ type Player struct {
 
 type Game struct {
 	Id uint64
-	PlayerId1 uint64
-	PlayerId2 uint64
+	UserId1 uint64
+	UserId2 uint64
 }
 
 type Transaction = *bbolt.Tx
+
+func (Game) Print() {
+	Println()
+}
 
 func itob(id uint64) []byte {
 	var key [8]byte
@@ -41,10 +45,27 @@ func DecodeGob(data []byte, out interface{}) error {
 	return gob.NewDecoder(bytes.NewReader(data)).Decode(out)
 }
 
-func CreatePlayer(p Player) (uint64, error) {
+func GetAllGames() []Game {
+	var games []Game
+
+	DB.View(func(tx Transaction) error {
+		b := tx.Bucket([]byte("game"))
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var game Game
+			DecodeGob(v, &game)
+			games = append(games, game)
+		}
+		return nil
+	})
+	return games
+}
+
+func CreateUser(p User) (uint64, error) {
 	var id uint64
 	return id, DB.Update(func(tx Transaction) error {
-		b := tx.Bucket([]byte("player"))
+		b := tx.Bucket([]byte("user"))
 
 		id ,_ = b.NextSequence()
 		p.Id = id
@@ -58,10 +79,10 @@ func CreatePlayer(p Player) (uint64, error) {
 	})
 }
 
-func GetPlayerById(id uint64) *Player {
-	var p Player
+func GetUserById(id uint64) *User {
+	var p User
 	DB.View(func(tx Transaction) error {
-		b := tx.Bucket([]byte("player"))
+		b := tx.Bucket([]byte("user"))
 		v := b.Get([]byte(itob(id)))
 		if v == nil {
 			return nil
@@ -71,11 +92,11 @@ func GetPlayerById(id uint64) *Player {
 	return &p
 }
 
-func GetPlayerByUsername(username string) *Player {
-	var p Player
+func GetUserByUsername(username string) *User {
+	var p User
 	found := false
 	DB.View(func(tx Transaction) error {
-		b := tx.Bucket([]byte("player"))
+		b := tx.Bucket([]byte("user"))
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -94,11 +115,11 @@ func GetPlayerByUsername(username string) *Player {
 	return &p
 }
 
-func GetAllPlayersIds() []uint64 {
+func GetAllUsersIds() []uint64 {
 	var ids []uint64
 
 	DB.View(func(tx Transaction) error {
-		b := tx.Bucket([]byte("player"))
+		b := tx.Bucket([]byte("user"))
 		// TODO batch this
 		c := b.Cursor()
 
@@ -110,18 +131,18 @@ func GetAllPlayersIds() []uint64 {
 	return ids
 }
 
-func GetAllPlayersUsernames() []string {
+func GetAllUsersUsernames() []string {
 	var usernames []string
 
 	DB.View(func(tx Transaction) error {
-		b := tx.Bucket([]byte("player"))
+		b := tx.Bucket([]byte("user"))
 		// TODO batch this
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			var player Player
-			DecodeGob(v, &player)
-			usernames = append(usernames, player.Name)
+			var user User
+			DecodeGob(v, &user)
+			usernames = append(usernames, user.Name)
 		}
 		return nil
 	})
@@ -130,16 +151,20 @@ func GetAllPlayersUsernames() []string {
 
 func CreateGame(game Game) (uint64, error) {
 	var id uint64
-	return id, DB.Update(func(tx Transaction) error {
+	Printf("Game created id1 = %d, id2 = %d \n", game.UserId1, game.UserId2)
+	err := DB.Update(func(tx Transaction) error {
 		b := tx.Bucket([]byte("game"))
 		buf := new(bytes.Buffer)
+		id, _ = b.NextSequence()
+		game.Id = id
+
 		if err := gob.NewEncoder(buf).Encode(game); err != nil {
 			return err
 		}
-		id, _ = b.NextSequence()
 
-		return b.Put(itob(game.Id), buf.Bytes())
+		return b.Put(itob(id), buf.Bytes())
 	})
+	return id, err
 }
 
 func GetLastGameId() (id uint64) {

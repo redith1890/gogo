@@ -19,7 +19,7 @@ func InitDB() error {
 		return err
 	}
 	err = DB.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("player"))
+		_, err := tx.CreateBucketIfNotExists([]byte("user"))
 		_, err = tx.CreateBucketIfNotExists([]byte("game"))
 		return err
 	})

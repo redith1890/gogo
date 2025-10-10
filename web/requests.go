@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 )
 
-type UserReq struct {
+type UserLoginReq struct {
 	Name string `json:"Name"`
 }
 
 type PlayReq struct {
-	Id uint64 `json:"PlayerId"`
+	Id uint64 `json:"UserId"`
 	//...
 }
 

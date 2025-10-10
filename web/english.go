@@ -37,7 +37,7 @@ func init() {
 		"identifier_or_password_invalid": "El usuario o contraseña no son correctos",
 		"log_out":                        "Log out",
 		"my_profile":                     "My Profile",
-		"online_players":                 "Online Players",
+		"online_users":                   "Online Users",
 	}
 
 	RegisterLang("en", EnglishLits)

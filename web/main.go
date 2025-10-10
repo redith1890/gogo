@@ -17,25 +17,34 @@ func cmd() {
 	for scanner.Scan() {
 		cmd := strings.TrimSpace(scanner.Text())
 		switch cmd {
-		case "users":
+		case "active users":
 			Store.Mu.RLock()
 			for _, session := range Store.Sessions {
-				Println(session.Values["PlayerId"])
+				Println(session.Values["UserId"])
 			}
 			Store.Mu.RUnlock()
 		case "usernames":
-			usernames := GetAllPlayersUsernames()
+			usernames := GetAllUsersUsernames()
 			for _, username := range usernames {
 				Println(username)
 			}
+		case "games":
+			games := GetAllGames()
+			for _, game := range games {
+				user1 := GetUserById(game.UserId1)
+				user2 := GetUserById(game.UserId2)
+				Println(game.UserId1)
+				Println(game.UserId2)
+				Printf("Game id: %d || %s VS %s \n", game.Id, user1.Name, user2.Name)
+			}
 		default:
-			if strings.HasPrefix(cmd, "player") {
-				username := strings.TrimSpace(cmd[len("player"):])
-				player := GetPlayerByUsername(username)
-				if player == nil {
+			if strings.HasPrefix(cmd, "user") {
+				username := strings.TrimSpace(cmd[len("user"):])
+				user := GetUserByUsername(username)
+				if user == nil {
 					Println("user does not exists")
 				} else {
-					Println(player)
+					Println(user)
 				}
 			} else {
 				Println("Comando no reconocido:", cmd)
@@ -66,7 +75,7 @@ func main() {
 
 	MainServer = NewServer() // for web sockets
 
-	go MainServer.SendOnlinePlayers()
+	go MainServer.SendOnlineUsers()
 	go MainServer.PingLoop()
 
 	mux := http.NewServeMux()
@@ -76,7 +85,7 @@ func main() {
 	mux.Handle("GET /game/{id}", LoggedMiddleware(Template("game.html", nil)))
 	mux.HandleFunc("POST /api/login/{$}", Login)
 	mux.HandleFunc("POST /api/play/{$}", PlayWith)
-	// mux.HandleFunc("GET /api/getallonlineplayers/{$}", GetAllOnlinePlayers)
+	// mux.HandleFunc("GET /api/getallonlineusers/{$}", GetAllOnlineUsers)
 
 	mux.Handle("/ws", websocket.Handler(MainServer.HandleWS))
 

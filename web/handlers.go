@@ -7,7 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	// "encoding/json"
+	"encoding/json"
 	"time"
 	. "strconv"
 )
@@ -74,7 +74,6 @@ func LoggedMiddleware(next http.Handler) http.Handler {
 				return
 			}
 		} else {
-			// No hay cookie, redirigir
 			http.Redirect(w, r, "/login/", http.StatusFound)
 			return
 		}
@@ -130,7 +129,7 @@ func GuestMiddleware(next http.Handler) http.Handler {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	var req UserReq
+	var req UserLoginReq
 	if !ParseRequest(w, r, &req) {
 		return
 	}
@@ -139,14 +138,15 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	values := make(map[string]string)
 	values["name"] = req.Name
 
-	player := Player{
+	user := User{
 		Name:        req.Name,
 		InGame:      false,
 		LastConnect: time.Now(),
 	}
 
-	id, _ := CreatePlayer(player)
-	values["PlayerId"] = Itoa(int(id))
+	id, _ := CreateUser(user)
+	Printf("id of the user created: %d with ITOA: %d \n", id, Itoa(int(id)))
+	values["UserId"] = Itoa(int(id))
 
 	new_session := Session{
 		ID:        new_session_id,
@@ -194,39 +194,50 @@ func PlayWith(w http.ResponseWriter, r *http.Request) {
 	}
 
 
-	player1 := StrToUint64(Store.Sessions[cookie.Value].Values["PlayerId"])
-	player2 := req.Id
+	user1 := StrToUint64(Store.Sessions[cookie.Value].Values["UserId"])
+	user2 := req.Id
 
 	//TODO check that the user has correct credentials session
-	Println(player1)
-	Println(player2)
+	Printf("user1: %d \n", user1)
+	Printf("user2: %d \n", user2)
 
 
 
 	game := Game{
-		PlayerId1: uint64(player1),
-		PlayerId2: uint64(player2),
+		UserId1: uint64(user1),
+		UserId2: uint64(user2),
 	}
 
 	game_id, err := CreateGame(game)
-	Println(err)
+	if err != nil {
+		Println(err)
+		return
+	}
 	Println(game_id)
 
 
-	// j1 := map[string]string{"play": player2}
-	// j2 := map[string]string{"play": player1}
+	// j1 := map[string]string{"play": user2}
+	// j2 := map[string]string{"play": user1}
 	// msg1, _ := json.Marshal(j1)
 	// msg2, _ := json.Marshal(j2)
-	// MainServer.SendToPlayer(player1, string(msg1))
-	// MainServer.SendToPlayer(player2, string(msg2))
+
+	// MainServer.SendToUser(user1, string(msg1))
+	// MainServer.SendToUser(user2, string(msg2))
+	route := "game/" + Itoa(int(game_id))
+	SendRedirectWS(user1, route)
+	SendRedirectWS(user2, route)
 
 	w.WriteHeader(http.StatusOK)
 }
 
 
+func SendRedirectWS(user_id uint64, route string) {
+	j := map[string]string{"redirect": route}
+	msg, _ := json.Marshal(j)
+	MainServer.SendToUser(user_id, string(msg))
+}
+
 
 /*
-- Create a random id game
-- Save the users in db with the id of the game
 - Build the template and think how to pass the data to the html about the current game state
 */

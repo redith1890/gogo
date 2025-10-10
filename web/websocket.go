@@ -25,7 +25,7 @@ func NewServer() *Server {
 
 func (s *Server) HandleWS(ws *websocket.Conn) {
 	Println("new incoming connection from client: ", ws.RemoteAddr())
-	id := GetPlayerIdFromRequest(ws)
+	id := GetUserIdFromRequest(ws)
 	s.conns[ws] = &SessionInfo{
 		Id:  id,
 		Flags: DEFAULT,
@@ -53,7 +53,7 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 		msg := string(buf[:n])
 
 		switch msg {
-		case "GetAllOnlinePlayers":
+		case "GetAllOnlineUsers":
 			s.conns[ws].Flags |= GET_LIST_USERS
 			s.MarkChanged()
 		// Not used
@@ -92,7 +92,7 @@ func (s *Server) MarkChanged() {
 	}
 }
 
-func GetPlayerIdFromRequest(ws *websocket.Conn) uint64 {
+func GetUserIdFromRequest(ws *websocket.Conn) uint64 {
 	req := ws.Request()
 
 	cookie, err := req.Cookie("session_id")
@@ -106,19 +106,20 @@ func GetPlayerIdFromRequest(ws *websocket.Conn) uint64 {
 	defer Store.Mu.RUnlock()
 
 	if session, ok := Store.Sessions[sessionID]; ok {
-		return StrToUint64(session.Values["PlayerId"])
+		return StrToUint64(session.Values["UserId"])
 	}
 
 	return 0
 }
 
-func (s *Server) SendOnlinePlayers() {
+func (s *Server) SendOnlineUsers() {
 	for range s.Changed {
-		var players []uint64
+		var users []*User
 		for _, info := range s.conns {
-			players = append(players, info.Id)
+			user := GetUserById(info.Id)
+			users = append(users, user)
 		}
-		data, _ := json.Marshal(players)
+		data, _ := json.Marshal(users)
 		for conn, info := range s.conns {
 			if info.Flags&GET_LIST_USERS != 0 {
 				conn.Write(data)
@@ -127,10 +128,10 @@ func (s *Server) SendOnlinePlayers() {
 	}
 }
 
-func (s *Server) SendToPlayer(PlayerId uint64, message string) error {
+func (s *Server) SendToUser(UserId uint64, message string) error {
     sChanged := false
     for conn, info := range s.conns {
-        if info.Id == PlayerId {
+        if info.Id == UserId {
             err := websocket.Message.Send(conn, message)
             if err != nil {
                 return err
@@ -139,7 +140,7 @@ func (s *Server) SendToPlayer(PlayerId uint64, message string) error {
         }
     }
     if !sChanged {
-        return Errorf("player not connected")
+        return Errorf("user not connected")
     }
     return nil
 }
